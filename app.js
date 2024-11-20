@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -21,9 +20,9 @@ app.get('/api/users/:id', (req, res) => {
 
 app.put('/api/users/:id', (req, res) => {
     const { id } = req.params;
-    const { username, email, password_hash } = req.body;
+    const { email, name, firstname } = req.body;
     const db = new Database();
-    db.getQuery('UPDATE Users SET username = ?, email = ?, password_hash = ? WHERE user_id = ?', [username, email, password_hash, id])
+    db.getQuery('UPDATE Users SET email = ?, name = ?, firstname = ? WHERE user_id = ?', [email, name, firstname, id])
         .then(() => res.send({ message: 'User updated successfully' }))
         .catch(error => res.status(500).send({ error: 'Failed to update user', details: error }));
 });
@@ -68,6 +67,37 @@ app.delete('/api/bookings/:id', (req, res) => {
     db.getQuery('DELETE FROM Bookings WHERE booking_id = ?', [id])
         .then(() => res.send({ message: 'Booking cancelled successfully' }))
         .catch(error => res.status(500).send({ error: 'Failed to cancel booking', details: error }));
+});
+
+// Registreren
+app.post('/api/register', (req, res) => {
+    const { name, firstname, email, phone, date_of_birth, country } = req.body;
+    const db = new Database();
+    db.getQuery(
+      'INSERT INTO Users (name, firstname, email, phone, date_of_birth, country) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, firstname, email, phone, date_of_birth, country]
+    )
+      .then(() => res.status(201).send({ success: true }))
+      .catch((error) => res.status(500).send({ success: false, error }));
+});
+
+// Login met e-mail
+app.post('/api/login', (req, res) => {
+    const { email, password } = req.body; // Zorg dat het wachtwoord ook mee wordt gestuurd
+    const db = new Database();
+
+    // Controleer of gebruiker bestaat
+    db.getQuery('SELECT * FROM Users WHERE email = ?', [email])
+        .then(user => {
+            if (user && user.password_hash === password) { // Controleer wachtwoord (indien gehasht, gebruik bcrypt.compare)
+                // Als je JWT gebruikt, genereer hier een token
+                const token = 'mock-token'; // Genereer een echte token met bijvoorbeeld jsonwebtoken
+                res.send({ success: true, token });
+            } else {
+                res.status(401).send({ success: false, error: 'Ongeldige e-mail of wachtwoord' });
+            }
+        })
+        .catch(error => res.status(500).send({ success: false, error: 'Login mislukt', details: error }));
 });
 
 app.get('/', (req, res) => {
