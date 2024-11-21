@@ -101,10 +101,10 @@ app.post('/api/login', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.send('Camping Platform API is running!');
+    res.send('AirSnS API is running!');
 });
 
 // Server starten
 app.listen(3000, () => {
-    console.log('CampingPlatform API running on port 3000');
+    console.log('AirSnS API running on port 3000');
 });
