@@ -10,6 +10,15 @@ class Database {
             database: 'CampingPlatform',
             port: 3306 
         });
+
+        this.connection.getConnection((err, connection) => {
+            if (err) {
+                console.error('Databaseverbinding mislukt:', err);
+            } else {
+                console.log('Succesvol verbonden met de database.');
+                connection.release();
+            }
+        });
     }
 
     async getQuery(query, params = []) {

@@ -18,6 +18,18 @@ app.get('/api/users/:id', (req, res) => {
         .catch(error => res.status(500).send({ error: 'Failed to fetch user', details: error }));
 });
 
+app.get('/api/test-users', (req, res) => {
+    db.getQuery('SELECT * FROM Users')
+        .then((rows) => {
+            console.log(rows); // Logt alle rijen naar de console
+            res.status(200).send(rows); // Stuurt de resultaten terug naar de client
+        })
+        .catch((err) => {
+            console.error('Fout bij ophalen gegevens:', err); // Logt de fout naar de console
+            res.status(500).send({ error: 'Er is een fout opgetreden' }); // Stuurt een foutmelding terug naar de client
+        });
+});
+
 app.put('/api/users/:id', (req, res) => {
     const { id } = req.params;
     const { email, name, firstname } = req.body;
@@ -71,14 +83,18 @@ app.delete('/api/bookings/:id', (req, res) => {
 
 // Registreren
 app.post('/api/register', (req, res) => {
+    console.log(req.body); // Debugging: toont de binnenkomende data
     const { name, firstname, email, phone, date_of_birth, country } = req.body;
     const db = new Database();
     db.getQuery(
-      'INSERT INTO Users (name, firstname, email, phone, date_of_birth, country) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, firstname, email, phone, date_of_birth, country]
+        'INSERT INTO Users (name, firstname, email, phone, date_of_birth, country) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, firstname, email, phone, date_of_birth, country]
     )
-      .then(() => res.status(201).send({ success: true }))
-      .catch((error) => res.status(500).send({ success: false, error }));
+    .then(() => res.status(201).send({ success: true }))
+    .catch((error) => {
+        console.error(error); // Debugging: toont backend-fouten
+        res.status(500).send({ success: false, error });
+    });
 });
 
 // Login met e-mail
