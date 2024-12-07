@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const bcrypt = require('bcrypt');
 const Database = require('./database');
-
 const app = express();
 
 // Middleware
@@ -82,39 +82,48 @@ app.delete('/api/bookings/:id', (req, res) => {
 });
 
 // Registreren
-app.post('/api/register', (req, res) => {
-    console.log(req.body); // Debugging: toont de binnenkomende data
-    const { name, firstname, email, phone, date_of_birth, country } = req.body;
+app.post('/api/register', async (req, res) => {
+    const { name, firstname, email, phone, date_of_birth, country, password } = req.body;
     const db = new Database();
-    db.getQuery(
-        'INSERT INTO Users (name, firstname, email, phone, date_of_birth, country) VALUES (?, ?, ?, ?, ?, ?)',
-        [name, firstname, email, phone, date_of_birth, country]
-    )
-    .then(() => res.status(201).send({ success: true }))
-    .catch((error) => {
-        console.error(error); // Debugging: toont backend-fouten
-        res.status(500).send({ success: false, error });
-    });
-});
+  
+    try {
+      // Wachtwoord hashen
+      const hashedPassword = await bcrypt.hash(password, 10);
+  
+      // Query om gebruiker te registreren
+      await db.getQuery(
+        `INSERT INTO Users (name, firstname, email, phone, date_of_birth, country, password_hash)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [name, firstname, email, phone, date_of_birth, country, hashedPassword]
+      );
+  
+      res.status(201).send({ success: true });
+    } catch (error) {
+      console.error('Fout bij registreren:', error);
+      res.status(500).send({ success: false, error: error.message });
+    }
+  });
 
 // Login met e-mail
-app.post('/api/login', (req, res) => {
-    const { email, password } = req.body; // Zorg dat het wachtwoord ook mee wordt gestuurd
+app.post("/api/login", async (req, res) => {
+    const { email, password } = req.body;
     const db = new Database();
-
-    // Controleer of gebruiker bestaat
-    db.getQuery('SELECT * FROM Users WHERE email = ?', [email])
-        .then(user => {
-            if (user && user.password_hash === password) { // Controleer wachtwoord (indien gehasht, gebruik bcrypt.compare)
-                // Als je JWT gebruikt, genereer hier een token
-                const token = 'mock-token'; // Genereer een echte token met bijvoorbeeld jsonwebtoken
-                res.send({ success: true, token });
-            } else {
-                res.status(401).send({ success: false, error: 'Ongeldige e-mail of wachtwoord' });
-            }
-        })
-        .catch(error => res.status(500).send({ success: false, error: 'Login mislukt', details: error }));
-});
+    try {
+      const users = await db.getQuery("SELECT * FROM Users WHERE email = ?", [email]);
+      if (users.length === 0) {
+        return res.status(401).send({ success: false, error: "Gebruiker niet gevonden" });
+      }
+      const user = users[0];
+      const isMatch = await bcrypt.compare(password, user.password_hash);
+      if (!isMatch) {
+        return res.status(401).send({ success: false, error: "Onjuist wachtwoord" });
+      }
+      res.send({ success: true, message: "Succesvol ingelogd!" });
+    } catch (err) {
+      res.status(500).send({ success: false, error: err.message });
+    }
+  });
+  
 
 app.get('/', (req, res) => {
     res.send('AirSnS API is running!');
