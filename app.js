@@ -104,26 +104,62 @@ app.post('/api/register', async (req, res) => {
     }
   });
 
-// Login met e-mail
-app.post("/api/login", async (req, res) => {
-    const { email, password } = req.body;
+// Endpoint om gebruikersinformatie op te halen
+app.get('/api/profile/:id', async (req, res) => {
+    const userId = req.params.id; // Haal user ID op uit de URL
     const db = new Database();
+  
     try {
-      const users = await db.getQuery("SELECT * FROM Users WHERE email = ?", [email]);
-      if (users.length === 0) {
-        return res.status(401).send({ success: false, error: "Gebruiker niet gevonden" });
+      const user = await db.getQuery('SELECT name, firstname, email, phone, date_of_birth, country FROM Users WHERE user_id = ?', [userId]);
+      if (user.length === 0) {
+        return res.status(404).send({ success: false, message: 'Gebruiker niet gevonden' });
       }
-      const user = users[0];
-      const isMatch = await bcrypt.compare(password, user.password_hash);
-      if (!isMatch) {
-        return res.status(401).send({ success: false, error: "Onjuist wachtwoord" });
-      }
-      res.send({ success: true, message: "Succesvol ingelogd!" });
+      res.status(200).send({ success: true, user: user[0] });
     } catch (err) {
-      res.status(500).send({ success: false, error: err.message });
+      console.error('Fout bij ophalen gebruikersinformatie:', err);
+      res.status(500).send({ success: false, message: 'Interne serverfout' });
+    }
+  });
+
+  app.get("/api/profile", async (req, res) => {
+    const userId = req.query.userId;
+  
+    try {
+      const user = await db.getQuery("SELECT * FROM Users WHERE user_id = ?", [userId]);
+      if (user.length === 0) {
+        return res.status(404).send({ success: false, message: "Gebruiker niet gevonden" });
+      }
+  
+      res.send({ success: true, user: user[0] });
+    } catch (err) {
+      console.error("Fout bij ophalen profiel:", err);
+      res.status(500).send({ success: false, message: "Interne serverfout" });
     }
   });
   
+
+// Login met e-mail
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+    const db = new Database(); // Zorg dat de Database klasse correct wordt gebruikt
+
+    try {
+        const [user] = await db.getQuery('SELECT * FROM Users WHERE email = ?', [email]);
+        if (!user) {
+            return res.status(400).send({ success: false, message: 'Gebruiker niet gevonden.' });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        if (!isPasswordValid) {
+            return res.status(400).send({ success: false, message: 'Onjuist wachtwoord.' });
+        }
+
+        res.send({ success: true, userId: user.user_id });
+    } catch (err) {
+        console.error('Interne fout bij inloggen:', err);
+        res.status(500).send({ success: false, message: 'Interne serverfout.' });
+    }
+});
 
 app.get('/', (req, res) => {
     res.send('AirSnS API is running!');
