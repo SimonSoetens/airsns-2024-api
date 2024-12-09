@@ -30,14 +30,67 @@ app.get('/api/test-users', (req, res) => {
         });
 });
 
-app.put('/api/users/:id', (req, res) => {
-    const { id } = req.params;
-    const { email, name, firstname } = req.body;
-    const db = new Database();
-    db.getQuery('UPDATE Users SET email = ?, name = ?, firstname = ? WHERE user_id = ?', [email, name, firstname, id])
-        .then(() => res.send({ message: 'User updated successfully' }))
-        .catch(error => res.status(500).send({ error: 'Failed to update user', details: error }));
+app.put('/api/users/:id/password', async (req, res) => {
+  const { id } = req.params; // User ID uit de URL
+  const { currentPassword, newPassword } = req.body; // Data uit de request body
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).send({ success: false, message: 'Alle velden zijn verplicht.' });
+  }
+
+  const db = new Database();
+
+  try {
+    // Haal de huidige hashed wachtwoord van de gebruiker op
+    const user = await db.getQuery('SELECT password_hash FROM Users WHERE user_id = ?', [id]);
+
+    if (!user.length) {
+      return res.status(404).send({ success: false, message: 'Gebruiker niet gevonden.' });
+    }
+
+    const hashedPassword = user[0].password_hash;
+
+    // Controleer of het ingevoerde huidige wachtwoord correct is
+    const isMatch = await bcrypt.compare(currentPassword, hashedPassword);
+    if (!isMatch) {
+      return res.status(400).send({ success: false, message: 'Huidig wachtwoord is onjuist.' });
+    }
+
+    // Hash het nieuwe wachtwoord
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update het wachtwoord in de database
+    await db.getQuery('UPDATE Users SET password_hash = ? WHERE user_id = ?', [newHashedPassword, id]);
+
+    res.send({ success: true, message: 'Wachtwoord succesvol bijgewerkt!' });
+  } catch (error) {
+    console.error('Fout bij het wijzigen van het wachtwoord:', error);
+    res.status(500).send({
+      success: false,
+      message: 'Er is een fout opgetreden bij het wijzigen van het wachtwoord.',
+    });
+  }
 });
+
+app.put('/api/profile/:id', (req, res) => {
+  const { id } = req.params;
+  const { email, name, firstname, phone, date_of_birth, country } = req.body;
+
+  console.log('Updating user:', id, req.body); // Debug log
+
+  const db = new Database();
+  db.getQuery(
+      'UPDATE Users SET email = ?, name = ?, firstname = ?, phone = ?, date_of_birth = ?, country = ? WHERE user_id = ?',
+      [email, name, firstname, phone, date_of_birth, country, id]
+  )
+      .then(() => res.send({ message: 'User updated successfully' }))
+      .catch((error) => {
+          console.error('Error updating user:', error);
+          res.status(500).send({ error: 'Failed to update user', details: error });
+      });
+});
+
+
 
 // Campingplekkenbeheer
 app.get('/api/campingspots/:id', (req, res) => {
