@@ -196,7 +196,17 @@ app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     const db = new Database(); // Zorg dat de Database klasse correct wordt gebruikt
 
-    try {
+    if (email === "owner@AirSnS.com" && password === "AirSnS2025") {
+      console.log('Inloggen als eigenaar gelukt.'); // Debug logging
+      return res.send({
+          success: true,
+          isOwner: true,
+          message: "Logged in as owner",
+      });
+    }
+    else
+    {
+      try {
         const [user] = await db.getQuery('SELECT * FROM Users WHERE email = ?', [email]);
         if (!user) {
             return res.status(400).send({ success: false, message: 'Gebruiker niet gevonden.' });
@@ -208,9 +218,10 @@ app.post('/api/login', async (req, res) => {
         }
 
         res.send({ success: true, userId: user.user_id });
-    } catch (err) {
-        console.error('Interne fout bij inloggen:', err);
-        res.status(500).send({ success: false, message: 'Interne serverfout.' });
+      } catch (err) {
+          console.error('Interne fout bij inloggen:', err);
+          res.status(500).send({ success: false, message: 'Interne serverfout.' });
+      }
     }
 });
 
