@@ -90,7 +90,22 @@ app.put('/api/profile/:id', (req, res) => {
       });
 });
 
+app.delete('/api/campingspots/:id', async (req, res) => {
+  const spotId = req.params.id;
+  const db = new Database();
 
+  try {
+    const result = await db.executeQuery('DELETE FROM CampingSpots WHERE spot_id = ?', [spotId]);
+    if (result.affectedRows > 0) {
+      res.send({ success: true, message: 'Campingspot succesvol verwijderd.' });
+    } else {
+      res.status(404).send({ success: false, message: 'Campingspot niet gevonden.' });
+    }
+  } catch (error) {
+    console.error('Fout bij het verwijderen van campingspot:', error);
+    res.status(500).send({ success: false, message: 'Interne serverfout.' });
+  }
+});
 
 // Campingplekkenbeheer
 app.get('/api/campingspots', async (req, res) => {
