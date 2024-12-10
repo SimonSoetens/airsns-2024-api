@@ -233,7 +233,54 @@ app.get('/api/profile/:id', async (req, res) => {
       res.status(500).send({ success: false, message: "Interne serverfout" });
     }
   });
+
+  app.post('/api/bookings', async (req, res) => {
+    const { userId, spotId } = req.body;
   
+    // Controleer of de vereiste gegevens aanwezig zijn
+    if (!userId || !spotId) {
+      return res.status(400).send({ success: false, message: 'Gebruiker en campingspot zijn verplicht.' });
+    }
+  
+    const db = new Database();
+  
+    try {
+      // Voeg een nieuwe boeking toe aan de database
+      const result = await db.executeQuery(
+        'INSERT INTO Bookings (user_id, spot_id) VALUES (?, ?)',
+        [userId, spotId]
+      );
+  
+      if (result.affectedRows > 0) {
+        res.send({ success: true, message: 'Boeking succesvol opgeslagen.' });
+      } else {
+        res.status(500).send({ success: false, message: 'Kon de boeking niet opslaan.' });
+      }
+    } catch (error) {
+      console.error('Fout bij het opslaan van de boeking:', error);
+      res.status(500).send({ success: false, message: 'Interne serverfout.' });
+    }
+  });
+
+  app.get('/api/bookings/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const db = new Database();
+  
+    try {
+      const bookings = await db.getQuery(
+        `SELECT b.booking_id, c.name, c.description, c.price, b.booking_date 
+         FROM Bookings b
+         JOIN CampingSpots c ON b.spot_id = c.spot_id
+         WHERE b.user_id = ?`,
+        [userId]
+      );
+  
+      res.send({ success: true, bookings });
+    } catch (error) {
+      console.error('Fout bij het ophalen van boekingen:', error);
+      res.status(500).send({ success: false, message: 'Interne serverfout.' });
+    }
+  });  
 
 // Login met e-mail
 app.post('/api/login', async (req, res) => {
