@@ -25,6 +25,16 @@ class Database {
         const [rows] = await this.connection.execute(query, params);
         return rows;
     }
+
+    async executeQuery(query, params) {
+        try {
+          const [rows] = await this.connection.execute(query, params);
+          return rows;
+        } catch (err) {
+          console.error('Database query error:', err);
+          throw err;
+        }
+    }
 }
 
 module.exports = Database;

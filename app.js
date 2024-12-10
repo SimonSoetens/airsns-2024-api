@@ -93,21 +93,50 @@ app.put('/api/profile/:id', (req, res) => {
 
 
 // Campingplekkenbeheer
-app.get('/api/campingspots/:id', (req, res) => {
-    const { id } = req.params;
-    const db = new Database();
-    db.getQuery('SELECT * FROM CampingSpots WHERE spot_id = ?', [id])
-        .then(spot => spot ? res.send(spot) : res.status(404).send({ error: 'Camping spot not found' }))
-        .catch(error => res.status(500).send({ error: 'Failed to fetch camping spot', details: error }));
+app.get('/api/campingspots', async (req, res) => {
+  const db = new Database();
+
+  try {
+    const spots = await db.getQuery('SELECT * FROM CampingSpots');
+    res.send({ success: true, campingSpots: spots });
+  } catch (error) {
+    console.error('Fout bij het ophalen van campingspots:', error);
+    res.status(500).send({ success: false, message: 'Interne serverfout.' });
+  }
 });
 
-app.post('/api/campingspots', (req, res) => {
-    const { name, owner_id, description, price } = req.body;
-    const db = new Database();
-    db.getQuery('INSERT INTO CampingSpots (name, owner_id, description, price) VALUES (?, ?, ?, ?)', [name, owner_id, description, price])
-        .then(() => res.status(201).send({ message: 'Camping spot added successfully' }))
-        .catch(error => res.status(500).send({ error: 'Failed to add camping spot', details: error }));
+
+app.post('/api/campingspots', async (req, res) => {
+  const { name, location, description, price } = req.body;
+  console.log('Ontvangen data:', req.body);
+
+
+  // Controleer of alle velden aanwezig zijn, zet anders op null
+  if (!name || !location || !description || price == null) {
+      return res.status(400).send({ success: false, message: 'Alle velden zijn verplicht.' });
+  }
+
+  const db = new Database();
+  const ownerId = 1; // Hardcoded eigenaar ID
+
+  try {
+      const result = await db.executeQuery(
+          'INSERT INTO campingspots (name, location, description, price, owner_id) VALUES (?, ?, ?, ?, ?)',
+          [name || null, location || null, description || null, price || null, ownerId]
+      );
+
+      if (result.affectedRows > 0) {
+          res.send({ success: true, message: 'Campingspot succesvol toegevoegd.' });
+      } else {
+          res.status(500).send({ success: false, message: 'Kon de campingspot niet toevoegen.' });
+      }
+  } catch (error) {
+      console.error('Fout bij het toevoegen van de campingspot:', error);
+      res.status(500).send({ success: false, message: 'Interne serverfout.' });
+  }
 });
+
+
 
 app.delete('/api/campingspots/:id', (req, res) => {
     const { id } = req.params;
