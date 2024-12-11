@@ -162,13 +162,22 @@ app.delete('/api/campingspots/:id', (req, res) => {
 });
 
 // Boekingenbeheer
-app.get('/api/bookings/user/:user_id', (req, res) => {
-    const { user_id } = req.params;
-    const db = new Database();
-    db.getQuery('SELECT * FROM Bookings WHERE user_id = ?', [user_id])
-        .then(bookings => res.send(bookings))
-        .catch(error => res.status(500).send({ error: 'Failed to fetch bookings', details: error }));
+app.get('/api/bookings/:user_id', (req, res) => {
+  const { user_id } = req.params;
+  const db = new Database();
+  console.log("Ophalen boekingen voor user_id:", user_id); // Log de user_id
+
+  db.getQuery('SELECT * FROM Bookings WHERE user_id = ?', [user_id])
+    .then(bookings => {
+      console.log("Boekingen opgehaald:", bookings); // Log de opgehaalde boekingen
+      res.send({ success: true, bookings });
+    })
+    .catch(error => {
+      console.error("Fout bij ophalen boekingen:", error);
+      res.status(500).send({ error: 'Failed to fetch bookings', details: error });
+    });
 });
+
 
 app.delete('/api/bookings/:id', (req, res) => {
     const { id } = req.params;
@@ -262,25 +271,28 @@ app.get('/api/profile/:id', async (req, res) => {
     }
   });
 
-  app.get('/api/bookings/:userId', async (req, res) => {
-    const { userId } = req.params;
+  app.get('/api/bookings/:user_id', async (req, res) => {
+    const { user_id } = req.params;
     const db = new Database();
   
     try {
+      console.log("Ontvangen user_id:", user_id); // Debugging log
       const bookings = await db.getQuery(
-        `SELECT b.booking_id, c.name, c.description, c.price, b.booking_date 
+        `SELECT b.booking_id, b.status, b.created_at, c.name, c.description, c.price
          FROM Bookings b
          JOIN CampingSpots c ON b.spot_id = c.spot_id
          WHERE b.user_id = ?`,
-        [userId]
+        [user_id]
       );
   
+      console.log("Opgehaalde boekingen:", bookings); // Debugging log
       res.send({ success: true, bookings });
     } catch (error) {
-      console.error('Fout bij het ophalen van boekingen:', error);
-      res.status(500).send({ success: false, message: 'Interne serverfout.' });
+      console.error("Fout bij ophalen boekingen:", error); // Debugging log
+      res.status(500).send({ success: false, message: 'Interne serverfout.', details: error });
     }
-  });  
+  });
+   
 
 // Login met e-mail
 app.post('/api/login', async (req, res) => {
