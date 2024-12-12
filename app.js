@@ -93,9 +93,13 @@ app.put('/api/profile/:id', (req, res) => {
 app.delete('/api/campingspots/:id', async (req, res) => {
   const spotId = req.params.id;
   const db = new Database();
-
   try {
+    // Eerst de gerelateerde boekingen verwijderen
+    await db.executeQuery('DELETE FROM Bookings WHERE spot_id = ?', [spotId]);
+
+    // Daarna de campingspot verwijderen
     const result = await db.executeQuery('DELETE FROM CampingSpots WHERE spot_id = ?', [spotId]);
+
     if (result.affectedRows > 0) {
       res.send({ success: true, message: 'Campingspot succesvol verwijderd.' });
     } else {
@@ -103,9 +107,10 @@ app.delete('/api/campingspots/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Fout bij het verwijderen van campingspot:', error);
-    res.status(500).send({ success: false, message: 'Interne serverfout.' });
+    res.status(500).send({ success: false, message: 'Interne serverfout.', details: error });
   }
 });
+
 
 // Campingplekkenbeheer
 app.get('/api/campingspots', async (req, res) => {
@@ -227,21 +232,31 @@ app.get('/api/profile/:id', async (req, res) => {
     }
   });
 
-  app.get("/api/profile", async (req, res) => {
-    const userId = req.query.userId;
+  app.get('/api/bookings/:user_id', async (req, res) => {
+    const { user_id } = req.params;
+    const db = new Database();
   
     try {
-      const user = await db.getQuery("SELECT * FROM Users WHERE user_id = ?", [userId]);
-      if (user.length === 0) {
-        return res.status(404).send({ success: false, message: "Gebruiker niet gevonden" });
-      }
+      console.log("Ontvangen user_id:", user_id); // Debugging log
+      const bookings = await db.getQuery(
+        `SELECT b.booking_id, b.status, b.created_at, 
+       IFNULL(c.name, 'Geen naam beschikbaar') AS name, 
+       IFNULL(c.description, 'Geen beschrijving beschikbaar') AS description, 
+       IFNULL(c.price, 'Onbekend') AS price
+      FROM Bookings b
+      INNER JOIN CampingSpots c ON b.spot_id = c.spot_id
+      WHERE b.user_id = ?`,
+        [user_id]
+      );
   
-      res.send({ success: true, user: user[0] });
-    } catch (err) {
-      console.error("Fout bij ophalen profiel:", err);
-      res.status(500).send({ success: false, message: "Interne serverfout" });
+      console.log("Boekingen ontvangen in API:", bookings); // Log resultaten
+      res.send({ success: true, bookings });
+    } catch (error) {
+      console.error("Fout bij ophalen boekingen:", error); // Debugging log
+      res.status(500).send({ success: false, message: 'Interne serverfout.', details: error });
     }
   });
+  
 
   app.post('/api/bookings', async (req, res) => {
     const { userId, spotId } = req.body;
@@ -280,12 +295,12 @@ app.get('/api/profile/:id', async (req, res) => {
       const bookings = await db.getQuery(
         `SELECT b.booking_id, b.status, b.created_at, c.name, c.description, c.price
          FROM Bookings b
-         JOIN CampingSpots c ON b.spot_id = c.spot_id
+         INNER JOIN CampingSpots c ON b.spot_id = c.spot_id
          WHERE b.user_id = ?`,
         [user_id]
-      );
+      );      
   
-      console.log("Opgehaalde boekingen:", bookings); // Debugging log
+      console.log("Boekingen opgevraagd door API:", bookings);
       res.send({ success: true, bookings });
     } catch (error) {
       console.error("Fout bij ophalen boekingen:", error); // Debugging log
