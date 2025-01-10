@@ -18,60 +18,6 @@ app.get('/api/users/:id', (req, res) => {
         .catch(error => res.status(500).send({ error: 'Failed to fetch user', details: error }));
 });
 
-app.get('/api/test-users', (req, res) => {
-    db.getQuery('SELECT * FROM Users')
-        .then((rows) => {
-            console.log(rows); // Logt alle rijen naar de console
-            res.status(200).send(rows); // Stuurt de resultaten terug naar de client
-        })
-        .catch((err) => {
-            console.error('Fout bij ophalen gegevens:', err); // Logt de fout naar de console
-            res.status(500).send({ error: 'Er is een fout opgetreden' }); // Stuurt een foutmelding terug naar de client
-        });
-});
-
-app.put('/api/users/:id/password', async (req, res) => {
-  const { id } = req.params; // User ID uit de URL
-  const { currentPassword, newPassword } = req.body; // Data uit de request body
-
-  if (!currentPassword || !newPassword) {
-    return res.status(400).send({ success: false, message: 'Alle velden zijn verplicht.' });
-  }
-
-  const db = new Database();
-
-  try {
-    // Haal de huidige hashed wachtwoord van de gebruiker op
-    const user = await db.getQuery('SELECT password_hash FROM Users WHERE user_id = ?', [id]);
-
-    if (!user.length) {
-      return res.status(404).send({ success: false, message: 'Gebruiker niet gevonden.' });
-    }
-
-    const hashedPassword = user[0].password_hash;
-
-    // Controleer of het ingevoerde huidige wachtwoord correct is
-    const isMatch = await bcrypt.compare(currentPassword, hashedPassword);
-    if (!isMatch) {
-      return res.status(400).send({ success: false, message: 'Huidig wachtwoord is onjuist.' });
-    }
-
-    // Hash het nieuwe wachtwoord
-    const newHashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update het wachtwoord in de database
-    await db.getQuery('UPDATE Users SET password_hash = ? WHERE user_id = ?', [newHashedPassword, id]);
-
-    res.send({ success: true, message: 'Wachtwoord succesvol bijgewerkt!' });
-  } catch (error) {
-    console.error('Fout bij het wijzigen van het wachtwoord:', error);
-    res.status(500).send({
-      success: false,
-      message: 'Er is een fout opgetreden bij het wijzigen van het wachtwoord.',
-    });
-  }
-});
-
 app.put('/api/profile/:id', (req, res) => {
   const { id } = req.params;
   const { email, name, firstname, phone, date_of_birth, country } = req.body;
@@ -111,7 +57,6 @@ app.delete('/api/campingspots/:id', async (req, res) => {
   }
 });
 
-
 // Campingplekkenbeheer
 app.get('/api/campingspots', async (req, res) => {
   const db = new Database();
@@ -124,7 +69,6 @@ app.get('/api/campingspots', async (req, res) => {
     res.status(500).send({ success: false, message: 'Interne serverfout.' });
   }
 });
-
 
 app.post('/api/campingspots', async (req, res) => {
   const { name, location, description, price } = req.body;
@@ -156,40 +100,12 @@ app.post('/api/campingspots', async (req, res) => {
   }
 });
 
-
-
 app.delete('/api/campingspots/:id', (req, res) => {
     const { id } = req.params;
     const db = new Database();
     db.getQuery('DELETE FROM CampingSpots WHERE spot_id = ?', [id])
         .then(() => res.send({ message: 'Camping spot deleted successfully' }))
         .catch(error => res.status(500).send({ error: 'Failed to delete camping spot', details: error }));
-});
-
-// Boekingenbeheer
-app.get('/api/bookings/:user_id', (req, res) => {
-  const { user_id } = req.params;
-  const db = new Database();
-  console.log("Ophalen boekingen voor user_id:", user_id); // Log de user_id
-
-  db.getQuery('SELECT * FROM Bookings WHERE user_id = ?', [user_id])
-    .then(bookings => {
-      console.log("Boekingen opgehaald:", bookings); // Log de opgehaalde boekingen
-      res.send({ success: true, bookings });
-    })
-    .catch(error => {
-      console.error("Fout bij ophalen boekingen:", error);
-      res.status(500).send({ error: 'Failed to fetch bookings', details: error });
-    });
-});
-
-
-app.delete('/api/bookings/:id', (req, res) => {
-    const { id } = req.params;
-    const db = new Database();
-    db.getQuery('DELETE FROM Bookings WHERE booking_id = ?', [id])
-        .then(() => res.send({ message: 'Booking cancelled successfully' }))
-        .catch(error => res.status(500).send({ error: 'Failed to cancel booking', details: error }));
 });
 
 // Registreren
@@ -257,7 +173,6 @@ app.get('/api/profile/:id', async (req, res) => {
     }
   });
   
-
   app.post('/api/bookings', async (req, res) => {
     const { userId, spotId } = req.body;
   
@@ -284,30 +199,7 @@ app.get('/api/profile/:id', async (req, res) => {
       console.error('Fout bij het opslaan van de boeking:', error);
       res.status(500).send({ success: false, message: 'Interne serverfout.' });
     }
-  });
-
-  app.get('/api/bookings/:user_id', async (req, res) => {
-    const { user_id } = req.params;
-    const db = new Database();
-  
-    try {
-      console.log("Ontvangen user_id:", user_id); // Debugging log
-      const bookings = await db.getQuery(
-        `SELECT b.booking_id, b.status, b.created_at, c.name, c.description, c.price
-         FROM Bookings b
-         INNER JOIN CampingSpots c ON b.spot_id = c.spot_id
-         WHERE b.user_id = ?`,
-        [user_id]
-      );      
-  
-      console.log("Boekingen opgevraagd door API:", bookings);
-      res.send({ success: true, bookings });
-    } catch (error) {
-      console.error("Fout bij ophalen boekingen:", error); // Debugging log
-      res.status(500).send({ success: false, message: 'Interne serverfout.', details: error });
-    }
-  });
-   
+  }); 
 
 // Login met e-mail
 app.post('/api/login', async (req, res) => {
